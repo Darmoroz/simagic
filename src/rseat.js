@@ -25,16 +25,20 @@ let result = [];
       const { document } = new JSDOM(data).window;
       const productsGrid = document.querySelector('.main-products.product-grid');
       const products = [...productsGrid.querySelectorAll('.product-layout')];
-      console.log(chalk.yellow(products.length));
-      const product = products.map(i => {
-        const model = i.querySelector('span[class="stat-2"]').children[1].textContent.replace('Simagic ', '');
-        const name = i.querySelector('.name').textContent;
-        const price = i.querySelector('span[class="price-tax"]').textContent.replace('Hors Taxes:', '');
-        const label = i.querySelector('.product-labels');
+      console.log('Quantity of goods in category', category, chalk.yellow(products.length));
+      const productInfo = products.map(item => {
+        const model = item
+          .querySelector('span[class="stat-2"]')
+          .children[1].textContent.replace('Simagic', '')
+          .replace('SIMAGIC', '')
+          .trim();
+        const name = item.querySelector('.name').textContent;
+        const price = item.querySelector('span[class="price-tax"]').textContent.replace('Hors Taxes:', '');
+        const label = item.querySelector('.product-labels');
         const availability = label ? label.textContent.replaceAll('\n', '') : 'Disponible';
         return { model, name, price, availability };
       });
-      result = [...result, product];
+      result = [...result, productInfo];
     } catch (error) {
       console.log(chalk.red(error));
     }
