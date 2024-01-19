@@ -11,6 +11,7 @@ let result = [];
 const TYPE_AVAILABILITY = {
   sold: 'Out of stock',
   add: 'Available',
+  pre: 'Pre-order',
 };
 
 (async function () {
@@ -44,12 +45,12 @@ const TYPE_AVAILABILITY = {
         ? priceContainer.querySelector('span:last-child .money')
         : priceContainer.querySelector('span:first-child .money');
 
-      const price = priceNotFormated.textContent.replace('€', '') + '€';
+      const price = priceNotFormated.textContent.replace('€', '').replace(',', '') + '€';
 
       const formBtn = product.querySelector('form').querySelectorAll('button');
       const btnValue = formBtn[0].textContent.split(' ')[0].toLowerCase();
       const isPreOrder = formBtn.length === 2;
-      const availability = isPreOrder ? 'Pre-order' : TYPE_AVAILABILITY[btnValue];
+      const availability = isPreOrder ? TYPE_AVAILABILITY.pre : TYPE_AVAILABILITY[btnValue];
       return { model, price, availability };
     });
     result = [...productsInfo];
