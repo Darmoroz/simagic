@@ -11,7 +11,7 @@ const TYPE_AVAILABILITY = {
   preorder: 'Pre-order',
 };
 
-const outputFileName = `${formatDate(new Date())}_euSimMotion`;
+const outputFileName = `${formatDate(new Date())}_euSimMotion.com`;
 let result = [];
 
 (async function () {

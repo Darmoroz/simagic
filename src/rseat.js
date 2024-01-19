@@ -12,7 +12,7 @@ const inputPathData = [
   'shifter-et-frein-a-main-1',
   'accessoires-simagic',
 ];
-const outputFileName = `${formatDate(new Date())}_rseat`;
+const outputFileName = `${formatDate(new Date())}_rseat.fr`;
 
 let result = [];
 
