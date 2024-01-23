@@ -32,11 +32,10 @@ let result = [];
           .children[1].textContent.replace('Simagic', '')
           .replace('SIMAGIC', '')
           .trim();
-        const name = item.querySelector('.name').textContent;
         const price = item.querySelector('span[class="price-tax"]').textContent.replace('Hors Taxes:', '');
         const label = item.querySelector('.product-labels');
         const availability = label ? label.textContent.replaceAll('\n', '') : 'Disponible';
-        return { model, name, price, availability };
+        return { model, price, availability };
       });
       result = [...result, productInfo];
     } catch (error) {
