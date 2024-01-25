@@ -1,10 +1,11 @@
 import axios from 'axios';
-import puppeteer from 'puppeteer';
 import chalk from 'chalk';
+
 import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
 const TYPE_AVAILABILITY = {
   sold: 'Out of stock',
@@ -23,16 +24,24 @@ let totalPages = 1;
         break;
       }
       console.log('PAGE', chalk.green(i));
-      const { data } = await axios.get(`https://www.simclub.gr/en/shop-2/page/${i}/?filter_brand=simagic`);
+      const { data } = await axios.get(
+        `https://www.simclub.gr/en/shop-2/page/${i}/?filter_brand=simagic`
+      );
       const { document } = new JSDOM(data).window;
 
       totalPages = Math.ceil(
-        document.querySelector('p.woocommerce-result-count')?.textContent.match(/\b(\d+)\s*results\b/)[1] / 20
+        document
+          .querySelector('p.woocommerce-result-count')
+          ?.textContent.match(/\b(\d+)\s*results\b/)[1] / 20
       );
 
-      const products = [...document.querySelectorAll('div.dt-css-grid.custom-pagination-handler article')];
+      const products = [
+        ...document.querySelectorAll('div.dt-css-grid.custom-pagination-handler article'),
+      ];
 
-      const productsSimple = products.filter(product => product.classList.contains('product-type-simple'));
+      const productsSimple = products.filter(product =>
+        product.classList.contains('product-type-simple')
+      );
       const productsVariableUrls = products
         .filter(product => product.classList.contains('product-type-variable'))
         .map(product => product.querySelector('a.alignnone').href);
@@ -45,7 +54,8 @@ let totalPages = 1;
           ?.textContent.replace(/Simagic|SIMAGIC|\n/g, '')
           .trim();
         const priceContainer = product.querySelectorAll('.woocommerce-Price-amount');
-        const price = priceContainer[priceContainer.length - 1].childNodes[1].data.replace(',', '') + '€';
+        const price =
+          priceContainer[priceContainer.length - 1].childNodes[1].data.replace(',', '') + '€';
         const isInStock = product.classList.contains('instock');
         const availability = isInStock ? TYPE_AVAILABILITY.add : TYPE_AVAILABILITY.sold;
 
@@ -63,13 +73,16 @@ let totalPages = 1;
         const productsVariableArr = JSON.parse(form.dataset.product_variations);
         const productsInfoVariable = productsVariableArr.map(product => {
           const model =
-            modelFirstPart + ' ' + Object.values(product.attributes).reduce((acc, val) => acc + ' ' + val, '');
+            modelFirstPart +
+            ' ' +
+            Object.values(product.attributes).reduce((acc, val) => acc + ' ' + val, '');
           const price = product.display_price + '.00€';
           const availabilityElement = new JSDOM(product.availability_html).window.document
             .querySelector('p')
             ?.textContent.split(' ')[0]
             .toLocaleLowerCase();
-          const availability = availabilityElement === 'in' ? TYPE_AVAILABILITY.add : TYPE_AVAILABILITY.sold;
+          const availability =
+            availabilityElement === 'in' ? TYPE_AVAILABILITY.add : TYPE_AVAILABILITY.sold;
 
           return { model, price, availability };
         });
@@ -78,7 +91,8 @@ let totalPages = 1;
       result.push(productsInfoSimple);
     } catch (error) {
       console.log(chalk.red(error));
+      await writeErrorToLog('simclub.gr', error);
     }
   }
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();

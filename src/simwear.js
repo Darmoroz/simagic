@@ -1,10 +1,11 @@
-import axios from 'axios';
 import puppeteer from 'puppeteer';
 import chalk from 'chalk';
+
 import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
 const URLS_PATH = [
   'Wheelbases',
@@ -45,7 +46,9 @@ let result = [];
       const data = await page.content();
       const { document } = new JSDOM(data).window;
       const products = [
-        ...document.querySelector('div[data-container="ProductContainer"]').querySelectorAll('div.card'),
+        ...document
+          .querySelector('div[data-container="ProductContainer"]')
+          .querySelectorAll('div.card'),
       ];
       console.log('Кількість товарів в категорії', category, chalk.yellow(products.length));
       await page.close();
@@ -63,15 +66,18 @@ let result = [];
             .replace(',', '.')
             .trim() + '€';
         const availability =
-          TYPE_AVAILABILITY[product.querySelector('.l-stock-label').textContent.split(' ')[0].toLowerCase()];
+          TYPE_AVAILABILITY[
+            product.querySelector('.l-stock-label').textContent.split(' ')[0].toLowerCase()
+          ];
         return { model, price, availability };
       });
       result = [...result, productsInfo];
     } catch (error) {
       console.log(chalk.red(error));
+      await writeErrorToLog('simwear.eu', error);
     }
   }
   browser.close();
 
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();

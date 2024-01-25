@@ -1,10 +1,11 @@
 import axios from 'axios';
-import puppeteer from 'puppeteer';
 import chalk from 'chalk';
+
 import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
 const TYPE_AVAILABILITY = {
   out: 'Out of stock',
@@ -109,7 +110,8 @@ let totalPages = 1;
       }
     } catch (error) {
       console.log(chalk.red(error));
+      await writeErrorToLog('raceanywhere.co.uk', error);
     }
   }
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();

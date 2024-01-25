@@ -4,6 +4,7 @@ import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
 const inputPathData = [
   'simagic-bases-direct-drive',
@@ -15,7 +16,6 @@ const inputPathData = [
 const outputFileName = `${formatDate(new Date())}_rseat.fr`;
 
 let result = [];
-
 
 (async function () {
   for (let i = 0; i < inputPathData.length; i++) {
@@ -32,7 +32,9 @@ let result = [];
           .children[1].textContent.replace('Simagic', '')
           .replace('SIMAGIC', '')
           .trim();
-        const price = item.querySelector('span[class="price-tax"]').textContent.replace('Hors Taxes:', '');
+        const price = item
+          .querySelector('span[class="price-tax"]')
+          .textContent.replace('Hors Taxes:', '');
         const label = item.querySelector('.product-labels');
         const availability = label ? label.textContent.replaceAll('\n', '') : 'Disponible';
         return { model, price, availability };
@@ -40,7 +42,8 @@ let result = [];
       result = [...result, productInfo];
     } catch (error) {
       console.log(chalk.red(error));
+      await writeErrorToLog('rseat.fr', error);
     }
   }
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();

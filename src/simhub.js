@@ -1,18 +1,20 @@
-import axios from 'axios';
 import puppeteer from 'puppeteer';
 import chalk from 'chalk';
+
 import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
-const outputFileName = `${formatDate(new Date())}_simhub.com.pl`;
-let result = [];
 const TYPE_AVAILABILITY = {
   sold: 'Out of stock',
   add: 'Available',
   pre: 'Pre-order',
 };
+
+const outputFileName = `${formatDate(new Date())}_simhub.com.pl`;
+let result = [];
 
 (async function () {
   const browser = await puppeteer.launch({
@@ -56,7 +58,8 @@ const TYPE_AVAILABILITY = {
     result = [...productsInfo];
   } catch (error) {
     console.log(chalk.red(error));
+    await writeErrorToLog('simhub.com.pl', error);
   }
 
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();

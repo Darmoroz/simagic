@@ -1,10 +1,11 @@
 import axios from 'axios';
-import puppeteer from 'puppeteer';
 import chalk from 'chalk';
+
 import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
 const URLS_PATH = [
   'wheel-bases',
@@ -34,7 +35,9 @@ let result = [];
   for (let i = 0; i < URLS_PATH.length; i++) {
     const category = URLS_PATH[i];
     try {
-      const { data } = await axios.get(`https://www.directdrive.it/en/sim-racing-wheels/${category}`);
+      const { data } = await axios.get(
+        `https://www.directdrive.it/en/sim-racing-wheels/${category}`
+      );
       const { document } = new JSDOM(data).window;
       const products = [...document.querySelectorAll('.shop-container .product-small.col')];
       console.log('Кількість товарів в категорії', category, chalk.yellow(products.length));
@@ -44,7 +47,8 @@ let result = [];
           .childNodes[2].data.replace(/Simagic|SIMAGIC|\n/g, '')
           .trim();
         const priceContainer = product.querySelectorAll('.woocommerce-Price-amount bdi');
-        const price = priceContainer[priceContainer.length - 1].childNodes[1].data.replace('.', '') + '.00€';
+        const price =
+          priceContainer[priceContainer.length - 1].childNodes[1].data.replace('.', '') + '.00€';
         let availability;
         if (product.classList.contains('outofstock')) {
           availability = TYPE_AVAILABILITY.sold;
@@ -60,7 +64,8 @@ let result = [];
       result = [...result, productsInfo];
     } catch (error) {
       console.log(chalk.red(error));
+      await writeErrorToLog('directdrive.it', error);
     }
   }
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();

@@ -1,9 +1,11 @@
 import axios from 'axios';
 import chalk from 'chalk';
+
 import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
 const TYPE_AVAILABILITY = {
   read: 'Out of stock',
@@ -18,11 +20,15 @@ let result = [];
   for (let i = 1; i < 6; i++) {
     console.log('PAGE', chalk.green(i));
     try {
-      const { data } = await axios.get(`https://eu.sim-motion.com/page/${i}/?s=simagic&post_type=product&lang=en`);
+      const { data } = await axios.get(
+        `https://eu.sim-motion.com/page/${i}/?s=simagic&post_type=product&lang=en`
+      );
       const { document } = new JSDOM(data).window;
       const products = [...document.querySelector('.products').querySelectorAll('li.product')];
 
-      const filterProducts = products.filter(product => product.classList.contains('product-type-simple'));
+      const filterProducts = products.filter(product =>
+        product.classList.contains('product-type-simple')
+      );
       console.log('Quantity of SIMPLE goods', chalk.yellow(filterProducts.length));
 
       const variableProductsUrl = products
@@ -36,7 +42,10 @@ let result = [];
           ?.textContent.replace('Simagic', '')
           .replace('SIMAGIC', '')
           .trim();
-        const price = product.querySelector('span.price')?.textContent.replace(' ', '').replace(',', '.');
+        const price = product
+          .querySelector('span.price')
+          ?.textContent.replace(' ', '')
+          .replace(',', '.');
         const label = product.querySelector('a.button')?.textContent.split(' ')[0].toLowerCase();
         const availability = TYPE_AVAILABILITY[label];
         return { model, price, availability };
@@ -77,7 +86,8 @@ let result = [];
       result = [...result, productInfo];
     } catch (error) {
       console.log(chalk.red(error));
+      await writeErrorToLog('euSimMotion.com', error);
     }
   }
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();

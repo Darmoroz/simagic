@@ -1,10 +1,11 @@
 import axios from 'axios';
-import puppeteer from 'puppeteer';
 import chalk from 'chalk';
+
 import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
 const TYPE_AVAILABILITY = {
   sold: 'Out of stock',
@@ -26,7 +27,9 @@ let totalPages = 1;
       const { data } = await axios.get(`https://www.sim-racing.no/search?q=simagic&side=${i}`);
       const { document } = new JSDOM(data).window;
 
-      totalPages = Math.ceil(document.querySelector('.page__title')?.textContent.match(/\d+/g).map(Number)[0] / 24);
+      totalPages = Math.ceil(
+        document.querySelector('.page__title')?.textContent.match(/\d+/g).map(Number)[0] / 24
+      );
 
       const products = [...document.querySelectorAll('.productlist>article')];
 
@@ -36,8 +39,10 @@ let totalPages = 1;
           .querySelector('h3.productlist__product__headline')
           ?.textContent.replace('Simagic', '')
           .trim();
-        const price = product.querySelector('meta[itemprop="price"]').attributes['content'].value + '.00NOK';
-        const quantity = product.querySelector('div[itemprop="offers"] meta[data-stock]').dataset.stock;
+        const price =
+          product.querySelector('meta[itemprop="price"]').attributes['content'].value + '.00NOK';
+        const quantity = product.querySelector('div[itemprop="offers"] meta[data-stock]').dataset
+          .stock;
         if (quantity > 0) {
           availability = TYPE_AVAILABILITY.add;
         } else {
@@ -48,7 +53,8 @@ let totalPages = 1;
       result = [...result, productsInfo];
     } catch (error) {
       console.log(chalk.red(error));
+      await writeErrorToLog('sim-racing.no', error);
     }
   }
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();

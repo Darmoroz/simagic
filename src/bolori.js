@@ -1,10 +1,11 @@
 import axios from 'axios';
-import puppeteer from 'puppeteer';
 import chalk from 'chalk';
+
 import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
 const TYPE_AVAILABILITY = {
   sold: 'Out of stock',
@@ -30,7 +31,9 @@ let totalPages = 1;
       );
 
       const products = [...document.querySelectorAll('.products.columns-3>li')];
-      const productsSimple = products.filter(product => product.classList.contains('product-type-simple'));
+      const productsSimple = products.filter(product =>
+        product.classList.contains('product-type-simple')
+      );
       const productsVariableUrls = products
         .filter(product => product.classList.contains('product-type-variable'))
         .map(product => product.querySelector('.woocommerce-LoopProduct-link').href);
@@ -44,7 +47,11 @@ let totalPages = 1;
         const price = priceContainer[priceContainer.length - 1].childNodes[0].data + '€';
         const availability =
           TYPE_AVAILABILITY[
-            product.querySelector('a.add_to_cart_button')?.textContent.substring(0, 3).trim().toLowerCase()
+            product
+              .querySelector('a.add_to_cart_button')
+              ?.textContent.substring(0, 3)
+              .trim()
+              .toLowerCase()
           ];
         return { model, price, availability };
       });
@@ -79,7 +86,8 @@ let totalPages = 1;
       result = [...result, productsInfoSimple];
     } catch (error) {
       console.log(chalk.red(error));
+      await writeErrorToLog('bolori.es', error);
     }
   }
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();

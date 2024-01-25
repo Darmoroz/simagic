@@ -1,10 +1,12 @@
 import axios from 'axios';
 import puppeteer from 'puppeteer';
 import chalk from 'chalk';
+
 import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
 const TYPE_AVAILABILITY = {
   sold: 'Out of stock',
@@ -17,7 +19,6 @@ let result = [];
 
 (async function () {
   const browser = await puppeteer.launch({
-    // headless: false,
     defaultViewport: { width: 1920, height: 1080 },
   });
   for (let i = 1; i < 3; i++) {
@@ -112,10 +113,11 @@ let result = [];
       await page.close();
     } catch (error) {
       console.log(chalk.red(error));
+      await writeErrorToLog('simufy.com', error);
     }
   }
   browser.close();
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();
 
 function getSelectedValues(selectElements) {

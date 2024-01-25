@@ -1,10 +1,11 @@
 import axios from 'axios';
-import puppeteer from 'puppeteer';
 import chalk from 'chalk';
+
 import { JSDOM } from 'jsdom';
 import { saveDataCSV } from './utils/saveDataCSV.js';
 import { convertToCSV } from './utils/convertToCSV.js';
 import { formatDate } from './utils/formatDate.js';
+import { writeErrorToLog } from './utils/writeErrorToLog.js';
 
 const TYPE_AVAILABILITY = {
   out: 'Out of stock',
@@ -17,7 +18,9 @@ let result = [];
 
 (async function () {
   try {
-    const { data } = await axios.get(`https://simraceshop.de/?view_mode=tiled&manufacturers_id=32&listing_count=192`);
+    const { data } = await axios.get(
+      `https://simraceshop.de/?view_mode=tiled&manufacturers_id=32&listing_count=192`
+    );
     const { document } = new JSDOM(data).window;
     const products = [...document.querySelectorAll('.productlist .product-container')];
     console.log('Кількість товарів', products.length);
@@ -43,6 +46,7 @@ let result = [];
     result.push(productsInfo);
   } catch (error) {
     console.log(chalk.red(error));
+    await writeErrorToLog('simraceshop.de', error);
   }
-  saveDataCSV(convertToCSV(result.flat()), outputFileName);
+  await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();
