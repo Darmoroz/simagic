@@ -42,10 +42,8 @@ let result = [];
           ?.textContent.replace('Simagic', '')
           .replace('SIMAGIC', '')
           .trim();
-        const price = product
-          .querySelector('span.price')
-          ?.textContent.replace(' ', '')
-          .replace(',', '.');
+          const priceContainer = product.querySelectorAll('.woocommerce-Price-amount bdi');
+          const price = priceContainer[priceContainer.length - 1].childNodes[0].data?.replace(',','.')?.trim() + '€';
         const label = product.querySelector('a.button')?.textContent.split(' ')[0].toLowerCase();
         const availability = TYPE_AVAILABILITY[label];
         return { model, price, availability };

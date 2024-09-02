@@ -18,8 +18,8 @@ let result = [];
 let totalPages = 1;
 
 (async function () {
-  for (let i = 1; i < 10; i++) {
-    try {
+  try {
+    for (let i = 1; i < 10; i++) {
       if (i > totalPages) {
         break;
       }
@@ -36,82 +36,69 @@ let totalPages = 1;
         ...document.querySelectorAll('div.cata-product.cp-grid.clearfix div.featured-img>a'),
       ].map(prod => prod.href);
       for (let j = 0; j < productsUrls.length; j++) {
-        let model;
-        let price;
-        let availability;
         const url = productsUrls[j];
-        const { data } = await axios.get(`https://www.raceanywhere.co.uk/${url}`);
-        const { document } = new JSDOM(data).window;
-        const modelFirstPartName = document
-          .querySelector('span[itemprop="name"].hide')
-          .textContent?.replace(/\(Simagic\)|\(SIMAGIC\)/g, '')
-          .trim();
-        const variableIdArr = [
-          ...document.querySelectorAll('div.variants-wrapper.clearfix select[name="id"] > option'),
-        ].map(i => i.value);
-        if (variableIdArr.length === 1) {
-          model = modelFirstPartName;
-          price =
-            document
-              .querySelector('div.detail-price span.money')
-              .textContent.replace('£', '')
-              .trim() + '£';
-
-          const elemntStock = document.querySelector(
-            'div#product-info ul.list-unstyled>li.product-stock'
-          );
-          const elementUnvaileble = document.querySelector('div.detail-price .unavailable');
-
-          if (elemntStock && elementUnvaileble) {
-            availability = TYPE_AVAILABILITY.out;
-          } else if (elemntStock) {
-            availability = TYPE_AVAILABILITY.in;
-          } else {
-            availability = TYPE_AVAILABILITY.pre;
-          }
-          result.push({ model, price, availability });
-        } else {
-          for (let k = 0; k < variableIdArr.length; k++) {
-            const variableId = variableIdArr[k];
-            if (!+variableId) {
-              model = modelFirstPartName + ' ' + variableId.replace('- Sold Out', '');
-              price = 'NaN';
-              availability = TYPE_AVAILABILITY.out;
-            } else {
-              const { data } = await axios.get(
-                `https://www.raceanywhere.co.uk${url}?variant=${variableId}`
-              );
-              const { document } = new JSDOM(data).window;
-              model =
-                modelFirstPartName +
-                ' ' +
-                document.querySelector('div.variants-wrapper.clearfix select[name="id"]')
-                  .selectedOptions[0].textContent;
-              price =
-                document
-                  .querySelector('div.detail-price span.money')
-                  .textContent.replace('£', '')
-                  .trim() + '£';
-              const elemntStock = document.querySelector(
-                'div#product-info ul.list-unstyled>li.product-stock'
-              );
-              const elementUnvaileble = document.querySelector('div.detail-price .unavailable');
-              if (elemntStock && elementUnvaileble) {
-                availability = TYPE_AVAILABILITY.out;
-              } else if (elemntStock) {
-                availability = TYPE_AVAILABILITY.in;
-              } else {
-                availability = TYPE_AVAILABILITY.pre;
-              }
-            }
-            result.push({ model, price, availability });
-          }
-        }
+        const { data } = await axios.get(`https://www.raceanywhere.co.uk/${url}`, {
+          headers: {
+            accept: 'application/json',
+            'accept-language': 'uk-UA,uk;q=0.9,ru-UA;q=0.8,ru;q=0.7,en;q=0.6,en-US;q=0.5',
+            'cache-control': 'no-cache',
+            pragma: 'no-cache',
+            'sec-ch-ua': '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-origin',
+          },
+          referrer:
+            'https://www.raceanywhere.co.uk/collections/simagic/products/p1000-hydraulic-modular-sim-racing-pedals-simagic',
+          referrerPolicy: 'strict-origin-when-cross-origin',
+          body: null,
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+        });
+        const products = data.product.variants.map(prod => {
+          const id = prod.id;
+          const model =
+            data.product.title.replace(/\(simagic\)|default\s*title/i, '').trim() +
+            ' ' +
+            prod.option1.replace(/\(simagic\)|default\s*title/i, '').trim();
+          const price = `${prod.price}£`;
+          return { model, price, availability: null, id, handle: data.product.handle };
+        });
+        result.push(...products);
       }
-    } catch (error) {
-      console.log(chalk.red(error));
-      await writeErrorToLog('raceanywhere.co.uk', error);
     }
+    for (let idxr = 0; idxr < result.length; idxr++) {
+      const prod = result[idxr];
+      const id = prod.id;
+      const handle = prod.handle;
+      const url = `https://www.raceanywhere.co.uk/collections/simagic/products/${handle}?variant=${id}&sections=product-availability`;
+      const { data } = await axios.get(url);
+      const { document } = new JSDOM(data['product-availability']).window;
+      let availability = document
+        .querySelector('li.product-stock')
+        ?.textContent.replace('Availability:', '')
+        .replace('Currently', '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (availability === undefined) {
+        prod.availability = TYPE_AVAILABILITY.pre;
+      }
+      if (availability === 'In Stock') {
+        prod.availability = TYPE_AVAILABILITY.in;
+      }
+      if (availability === 'Out Of Stock') {
+        prod.availability = TYPE_AVAILABILITY.out;
+      }
+      delete prod.id;
+      delete prod.handle;
+    }
+  } catch (error) {
+    console.log(chalk.red(error));
+    await writeErrorToLog('raceanywhere.co.uk', error);
   }
+
   await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();

@@ -14,13 +14,15 @@ const URLS_PATH = [
   'handbrake-sim-racing',
   'sequential-shifter',
   'h-shifter',
-  'merchandising-en',
-  'ccessories/pedals-accessories',
+  'accessories/pedals-accessories',
   'accessories/wheel',
+  'merchandising-en',
   'bundles/bundle-alpha-mini-en',
   'bundles/bundle-alpha',
   'bundles/bundle-alpha-u-en',
   'bundles/mega-bundle-sim-racing-en',
+  'bundles/bundle-simucube-2-pro-en',
+  'bundles/bundle-moza-en',
 ];
 const TYPE_AVAILABILITY = {
   sold: 'Out of stock',
@@ -43,9 +45,8 @@ let result = [];
       console.log('Кількість товарів в категорії', category, chalk.yellow(products.length));
       const productsInfo = products.map(product => {
         const model = product
-          .querySelector('.title-wrapper')
-          .childNodes[2].data.replace(/Simagic|SIMAGIC|\n/g, '')
-          .trim();
+          .querySelector('.title-wrapper a')?.textContent?.replace(/Simagic|SIMAGIC|\n/g, '')
+          ?.trim();
         const priceContainer = product.querySelectorAll('.woocommerce-Price-amount bdi');
         const price =
           priceContainer[priceContainer.length - 1].childNodes[1].data.replace('.', '') + '.00€';

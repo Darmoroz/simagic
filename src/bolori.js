@@ -27,10 +27,10 @@ let totalPages = 1;
       const { data } = await axios.get(`https://bolori.es/en/shop/page/${i}`);
       const { document } = new JSDOM(data).window;
       totalPages = Math.ceil(
-        document.querySelector('p.woocommerce-result-count').textContent.match(/of (\d+)/)[1] / 12
+        document.querySelector('p.woocommerce-result-count').textContent.match(/of (\d+)/)[1] / 24
       );
 
-      const products = [...document.querySelectorAll('.products.columns-3>li')];
+      const products = [...document.querySelectorAll('.products.columns-4>li')];
       const productsSimple = products.filter(product =>
         product.classList.contains('product-type-simple')
       );
@@ -47,11 +47,13 @@ let totalPages = 1;
         const price = priceContainer[priceContainer.length - 1].childNodes[0].data + '€';
         const availability =
           TYPE_AVAILABILITY[
-            product
-              .querySelector('a.add_to_cart_button')
-              ?.textContent.substring(0, 3)
-              .trim()
-              .toLowerCase()
+            product.querySelector('a.add_to_cart_button')
+              ? product
+                  .querySelector('a.add_to_cart_button')
+                  ?.textContent.substring(0, 3)
+                  .trim()
+                  .toLowerCase()
+              : 'sold'
           ];
         return { model, price, availability };
       });
@@ -71,13 +73,17 @@ let totalPages = 1;
           } else {
             model = modelFirstPart + ' ' + product.attributes[productAtributesKeys[0]];
           }
-          const price = product.display_price + '.00€';
+          const price = String(product.display_price).includes('.') ? product.display_price + '0€' :product.display_price + '.00€';
           const availabilityElement = new JSDOM(product.availability_html).window.document
             .querySelector('p')
             ?.textContent.split(' ')[0]
             .toLocaleLowerCase();
           if (availabilityElement === 'en' || availabilityElement === 'disponible') {
             availability = TYPE_AVAILABILITY.add;
+          } 
+          if (availabilityElement === 'sin') {
+            availability = TYPE_AVAILABILITY.sold;
+            
           }
           return { model, price, availability };
         });

@@ -28,6 +28,7 @@ let result = [];
 
 (async function () {
   const browser = await puppeteer.launch({
+    // headless: false,
     defaultViewport: { width: 1920, height: 1080 },
   });
   for (let i = 0; i < URLS_PATH.length; i++) {
@@ -67,8 +68,11 @@ let result = [];
             .trim() + '€';
         const availability =
           TYPE_AVAILABILITY[
-            product.querySelector('.l-stock-label').textContent.split(' ')[0].toLowerCase()
+            product.querySelector('.l-stock-label')?.textContent.split(' ')[0].toLowerCase()
           ];
+        if (!availability) {
+          return { model, price, availability: TYPE_AVAILABILITY['extra'] };
+        }
         return { model, price, availability };
       });
       result = [...result, productsInfo];
