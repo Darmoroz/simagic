@@ -19,6 +19,7 @@ let result = [];
 
 (async function () {
   const browser = await puppeteer.launch({
+    // headless: false,
     defaultViewport: { width: 1920, height: 1080 },
   });
   for (let i = 1; i < 3; i++) {
@@ -26,52 +27,47 @@ let result = [];
 
     try {
       const page = await browser.newPage();
-      await page.goto(`https://simufy.com/collections/simagic?page=${i}&lang=en`);
-      await page.waitForTimeout(12000);
+      await page.goto(`https://simufy.com/en/collections/simagic?page=${i}&lang=en`);
+      await page.waitForTimeout(6000);
       const data = await page.content();
       const { document } = new JSDOM(data).window;
       const products = [
         ...document.querySelectorAll('.new-grid.product-grid.collection-grid > div'),
       ];
-
+      console.log('total prod', products.length);
       const productsSimple = products.filter(
         product =>
           !product
             .querySelector('.grid-product__price--current span[aria-hidden="true"]')
             .classList.contains('grid-product__price--from')
       );
-
-      const productsVariablesUrls = products
-        .filter(product =>
-          product
-            .querySelector('.grid-product__price--current span[aria-hidden="true"]')
-            .classList.contains('grid-product__price--from')
-        )
-        .map(product => product.querySelector('.grid-item__link').href);
-
       const productsSimpleInfo = productsSimple.map(product => {
         const model = product
           .querySelector('div.grid-product__title')
-          ?.textContent.replace(/Simagic|SIMAGIC|\n|\t/g, '')
-          .trim();
+          ?.textContent?.replace(/Simagic|SIMAGIC|\n|\t/g, '')
+          ?.trim();
         const price =
           product
             .querySelector(
               '.collection-grid .grid-product__price--current span[aria-hidden="true"]'
             )
-            .textContent.replace(/[.€]/g, '')
-            .replace(',', '.') + '€';
+            ?.textContent.replace(/[.€]/g, '')
+            ?.replace(',', '.') + '€';
 
         const isPreOrder = product.querySelector('.preorder-aplha-badge');
         const availability = isPreOrder ? TYPE_AVAILABILITY.hacer : TYPE_AVAILABILITY.add;
         return { model, price, availability };
       });
-
-      result.push(productsSimpleInfo);
-
+      console.log('simple info prod', productsSimpleInfo.length);
+      const productsVariablesUrls = products.filter(product =>
+        product.querySelector('.grid-product__price--current span[aria-hidden="true"]').classList.contains('grid-product__price--from')
+      ).map(product => `https://simufy.com${product.querySelector('.grid-item__link').href}`);
+      result.push(...productsSimpleInfo);
+      console.log('Variable Urls', productsVariablesUrls.length);
+      console.log('results length', result.length);
       for (let j = 0; j < productsVariablesUrls.length; j++) {
         const partOfUrl = productsVariablesUrls[j];
-        const { data } = await axios.get(`https://simufy.com/${partOfUrl}`);
+        const { data } = await axios.get(partOfUrl);
         const { document } = new JSDOM(data).window;
         const variableProductIds = [
           ...document.querySelectorAll('.hide.js-product-inventory-data > div'),
@@ -79,16 +75,16 @@ let result = [];
         console.log('Варіативні товари', variableProductIds.length);
         for (let k = 0; k < variableProductIds.length; k++) {
           const productId = variableProductIds[k];
-          await page.goto(`https://simufy.com/${partOfUrl}?variant=${productId}&lang=en`);
-          await page.waitForTimeout(12000);
+          await page.goto(`${partOfUrl}?variant=${productId}&lang=en`);
+          await page.waitForTimeout(1000);
           const data = await page.content();
           const { document } = new JSDOM(data).window;
 
           const modelFirstPart = document
             .querySelector('h1.product-single__title')
-            .textContent.replace(/\n|\t|Simagic/g, '')
-            .trim();
-          const modelLastPart = getSelectedValues([
+            ?.textContent?.replace(/\n|\t|Simagic/g, '')
+            ?.trim();
+            const modelLastPart = getSelectedValues([
             ...document.querySelectorAll('.variant-wrapper.variant-wrapper--dropdown.js select'),
           ]);
           const model = modelFirstPart + ' ' + modelLastPart.join(' ');
@@ -96,20 +92,21 @@ let result = [];
             'span[data-product-price].product__price'
           );
           const price =
-            productPriceElement.firstChild.textContent.replace(/[.€]/g, '').replace(',', '.') + '€';
+            productPriceElement.firstChild?.textContent?.replace(/[.€]/g, '')?.replace(',', '.') +
+            '€';
           const buttons = document.querySelectorAll(
             '.product-single__form .payment-buttons button[name="add"]'
           );
-          const btnText = buttons[buttons.length - 1].textContent
-            .replace(/\n|\t/g, '')
-            .trim()
-            .split(' ')[0]
-            .toLowerCase();
+          const btnText = buttons[buttons.length - 1]?.textContent
+          ?.replace(/\n|\t/g, '')
+          ?.trim()
+          ?.split(' ')?.[0]
+          ?.toLowerCase();
           const availability = TYPE_AVAILABILITY[btnText];
           result.push({ model, price, availability });
         }
       }
-
+      
       await page.close();
     } catch (error) {
       console.log(chalk.red(error));
@@ -117,6 +114,8 @@ let result = [];
     }
   }
   browser.close();
+  
+  saveAsJSON('results', result)
   await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();
 
@@ -127,9 +126,28 @@ function getSelectedValues(selectElements) {
     const selectedOption = selectElement.querySelector('option:checked');
 
     if (selectedOption) {
-      selectedValues.push(selectedOption.textContent.replace(/\n|\t|Simagic/g, '').trim());
+      selectedValues.push(selectedOption?.textContent?.replace(/\n|\t|SIMAGIC/g, '')?.trim());
     }
   });
 
   return selectedValues;
+}
+
+import fs from 'fs';
+import path from 'path';
+
+export function saveAsJSON(filePath, data) {
+  return new Promise((resolve, reject) => {
+    if (!filePath.endsWith('.json')) {
+      filePath += '.json';
+    }
+    const absolutePath = path.resolve(filePath);
+    fs.writeFile(absolutePath, JSON.stringify(data, null, 4), err => {
+      if (err) {
+        reject(err);
+      }
+      resolve();
+      console.log('save success json')
+    });
+  });
 }
