@@ -42,12 +42,11 @@ let result = [];
           ?.textContent.replace('Simagic', '')
           .replace('SIMAGIC', '')
           .trim();
-          const priceContainer = product.querySelectorAll('.woocommerce-Price-amount bdi');
-          const price =
-            priceContainer[priceContainer.length - 1]?.textContent
-              ?.replace('.', '')
-              ?.replace(',', '.')
-              ?.trim() + '€';
+        const priceContainer = product.querySelectorAll('.woocommerce-Price-amount bdi');
+        const price = priceContainer[priceContainer.length - 1]?.textContent
+          ?.replace(/[\s.]+/g, '')
+          ?.replace(',', '.')
+          ?.trim();
         const label = product.querySelector('a.button')?.textContent.split(' ')[0].toLowerCase();
         const availability = TYPE_AVAILABILITY[label];
         return { model, price, availability };
@@ -69,7 +68,9 @@ let result = [];
           const productKeys = Object.keys(product);
           const attributeName = Object.keys(product.attributes)[0];
           const model = `${modelFirstPart} Style ${product.attributes[attributeName]}`;
-          const price = `${product.display_price}.00€`;
+          const price = String(product.display_price).includes('.')
+            ? `${product.display_price}€`
+            : `${product.display_price}.00€`;
           let availability;
           if (!product.is_in_stock) {
             availability = TYPE_AVAILABILITY.read;
