@@ -12,6 +12,7 @@ const TYPE_AVAILABILITY = {
   sold: 'Out of stock',
   add: 'Available',
   hacer: 'Pre-order',
+  pre: 'Pre-order',
 };
 
 const outputFileName = `${formatDate(new Date())}_simufy.com`;
@@ -19,8 +20,16 @@ let result = [];
 
 (async function () {
   const browser = await puppeteer.launch({
-    // headless: false,
+    //  headless: false,
     defaultViewport: { width: 1920, height: 1080 },
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-extensions',
+    ],
+    timeout: 45000,
   });
   for (let i = 1; i < 3; i++) {
     console.log('PAGE', chalk.green(i));
@@ -28,12 +37,14 @@ let result = [];
     try {
       const page = await browser.newPage();
       await page.goto(`https://simufy.com/en/collections/simagic?page=${i}&lang=en`);
-      await page.waitForTimeout(6000);
-      const data = await page.content();
-      const { document } = new JSDOM(data).window;
-      const products = [
-        ...document.querySelectorAll('.new-grid.product-grid.collection-grid > div'),
-      ];
+      await page.waitForTimeout(10000);
+      const productsObj = await page.evaluate(() => {
+        const items = [
+          ...document.querySelectorAll('.new-grid.product-grid.collection-grid > div'),
+        ];
+        return items;
+      });
+      const products = productsObj.map(el => new JSDOM(el.wgParsedHTML).window.document);
       console.log('total prod', products.length);
       const productsSimple = products.filter(
         product =>
@@ -48,9 +59,7 @@ let result = [];
           ?.trim();
         const price =
           product
-            .querySelector(
-              '.collection-grid .grid-product__price--current span[aria-hidden="true"]'
-            )
+            .querySelector('.grid-product__price--current span[aria-hidden="true"]')
             ?.textContent.replace(/[.€]/g, '')
             ?.replace(',', '.') + '€';
 
@@ -59,54 +68,70 @@ let result = [];
         return { model, price, availability };
       });
       console.log('simple info prod', productsSimpleInfo.length);
-      const productsVariablesUrls = products.filter(product =>
-        product.querySelector('.grid-product__price--current span[aria-hidden="true"]').classList.contains('grid-product__price--from')
-      ).map(product => `https://simufy.com${product.querySelector('.grid-item__link').href}`);
+      const productsVariablesUrls = products
+        .filter(product =>
+          product
+            .querySelector('.grid-product__price--current span[aria-hidden="true"]')
+            .classList.contains('grid-product__price--from')
+        )
+        .map(product => `https://simufy.com${product.querySelector('.grid-item__link').href}`);
       result.push(...productsSimpleInfo);
-      console.log('Variable Urls', productsVariablesUrls.length);
       console.log('results length', result.length);
+      console.log('Variable Urls', productsVariablesUrls.length);
       for (let j = 0; j < productsVariablesUrls.length; j++) {
         const partOfUrl = productsVariablesUrls[j];
         const { data } = await axios.get(partOfUrl);
-        const { document } = new JSDOM(data).window;
+        const cleanedData = data.replace(/<style[\s\S]*?<\/style>/g, '');
+        const { document } = new JSDOM(cleanedData).window;
         const variableProductIds = [
           ...document.querySelectorAll('.hide.js-product-inventory-data > div'),
         ].map(i => i.dataset['id']);
+
         console.log('Варіативні товари', variableProductIds.length);
         for (let k = 0; k < variableProductIds.length; k++) {
           const productId = variableProductIds[k];
-          await page.goto(`${partOfUrl}?variant=${productId}&lang=en`);
-          await page.waitForTimeout(1000);
-          const data = await page.content();
-          const { document } = new JSDOM(data).window;
+          try {
+            await page.goto(`${partOfUrl}?variant=${productId}&lang=en`);
+            await page.waitForTimeout(1000);
+            await page.evaluate(() => {
+              const styles = document.querySelectorAll('style');
+              styles.forEach(style => style.remove());
+            });
+            const data = await page.content();
+            const { document } = new JSDOM(data).window;
 
-          const modelFirstPart = document
-            .querySelector('h1.product-single__title')
-            ?.textContent?.replace(/\n|\t|Simagic/g, '')
-            ?.trim();
+            const modelFirstPart = document
+              .querySelector('h1.product-single__title')
+              ?.textContent?.replace(/\n|\t|Simagic|SIMAGIC/g, '')
+              ?.trim();
             const modelLastPart = getSelectedValues([
-            ...document.querySelectorAll('.variant-wrapper.variant-wrapper--dropdown.js select'),
-          ]);
-          const model = modelFirstPart + ' ' + modelLastPart.join(' ');
-          const productPriceElement = document.querySelector(
-            'span[data-product-price].product__price'
-          );
-          const price =
-            productPriceElement.firstChild?.textContent?.replace(/[.€]/g, '')?.replace(',', '.') +
-            '€';
-          const buttons = document.querySelectorAll(
-            '.product-single__form .payment-buttons button[name="add"]'
-          );
-          const btnText = buttons[buttons.length - 1]?.textContent
-          ?.replace(/\n|\t/g, '')
-          ?.trim()
-          ?.split(' ')?.[0]
-          ?.toLowerCase();
-          const availability = TYPE_AVAILABILITY[btnText];
-          result.push({ model, price, availability });
+              ...document.querySelectorAll('.variant-wrapper.variant-wrapper--dropdown.js select'),
+            ]);
+            const model = modelFirstPart + ' ' + modelLastPart.join(' ');
+            const productPriceElement = document.querySelector(
+              'span[data-product-price].product__price'
+            );
+            const price =
+            productPriceElement?.textContent
+            ?.split('\n')?.[0]?.trim()
+            ?.replace(/[.€]/g, '')
+                ?.replace(',', '.') + '€';
+            const buttons = document.querySelectorAll(
+              '.product-single__form .payment-buttons button[name="add"]'
+            );
+            const btnText = buttons[buttons.length - 1]?.textContent
+              ?.replace(/\n|\t/g, '')
+              ?.trim()
+              ?.split(' ')?.[0]
+              ?.toLowerCase();
+            const availability = TYPE_AVAILABILITY[btnText];
+            result.push({ model, price, availability });
+          } catch (error) {
+            continue;
+          }
         }
       }
-      
+
       await page.close();
     } catch (error) {
       console.log(chalk.red(error));
@@ -114,8 +139,7 @@ let result = [];
     }
   }
   browser.close();
-  
-  saveAsJSON('results', result)
+
   await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();
 
@@ -147,7 +171,7 @@ export function saveAsJSON(filePath, data) {
         reject(err);
       }
       resolve();
-      console.log('save success json')
+      console.log('save success json');
     });
   });
 }

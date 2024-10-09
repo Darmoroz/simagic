@@ -61,7 +61,7 @@ let result = [];
           .trim();
         const price =
           product
-            .querySelector('.l-product-price')
+            .querySelector('.l-product-price .current')
             ?.textContent.replace('€', '')
             .replace('.', '')
             .replace(',', '.')

@@ -278,7 +278,6 @@ const outputFileName = `${formatDate(new Date())}_simhub.pro`;
     }
   }
   browser.close();
-  await saveToJson('', 'temp', resultsFull);
   const result = resultsFull.map(item => {
     const nameFirst = item.title.replace('Simagic', '');
     const variationsItem = item.variants.map(i => {
@@ -295,15 +294,3 @@ const outputFileName = `${formatDate(new Date())}_simhub.pro`;
   });
   await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();
-
-async function saveToJson(path, name, data) {
-  return new Promise((resolve, reject) => {
-    fs.writeFile(`${path}${name}.json`, JSON.stringify(data, null, 4), err => {
-      if (err) {
-        return reject(err);
-      }
-      console.log(`File was saved successfully: ${chalk.green(path + name)}`);
-      resolve();
-    });
-  });
-}
