@@ -267,7 +267,7 @@ const outputFileName = `${formatDate(new Date())}_simhub.pro`;
   for (let pageLink = 1; pageLink < 8; pageLink++) {
     console.log('PAGE', pageLink);
     try {
-      await page.goto(`https://simhub.pro/search?page=${pageLink}&q=Simagic`);
+      await page.goto(`https://simhub.pro/en-pt/search?page=${pageLink}&q=Simagic`);
       const products = await page.evaluate(() => {
         return window.GloboPreorderParams.products;
       });
