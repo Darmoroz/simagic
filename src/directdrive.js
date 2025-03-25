@@ -64,7 +64,7 @@ let result = [];
       });
       result = [...result, productsInfo];
     } catch (error) {
-      console.log(chalk.red(error));
+      console.log(error);
       await writeErrorToLog('directdrive.it', error);
     }
   }

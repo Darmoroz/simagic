@@ -19,14 +19,18 @@ let totalPages = 1;
 
 (async function () {
   for (let i = 1; i < 10; i++) {
+    let requestLink= null
+    if (i===1) {
+      requestLink='https://www.simclub.gr/en/shop-2/?filter_brand=simagic'
+    } else {
+      requestLink=`https://www.simclub.gr/en/shop-2/page/${i}/?filter_brand=simagic`
+    }
     try {
       if (i > totalPages) {
         break;
       }
       console.log('PAGE', chalk.green(i));
-      const { data } = await axios.get(
-        `https://www.simclub.gr/en/shop-2/page/${i}/?filter_brand=simagic`
-      );
+      const { data } = await axios.get(requestLink);
       const { document } = new JSDOM(data).window;
 
       totalPages = Math.ceil(
