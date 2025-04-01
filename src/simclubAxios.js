@@ -1,4 +1,3 @@
-import { connect } from 'puppeteer-real-browser';
 import axios from 'axios';
 import chalk from 'chalk';
 
@@ -14,32 +13,11 @@ const TYPE_AVAILABILITY = {
   pre: 'Pre-order',
 };
 
-const browserOpts={
-  headless: false,
-  protocolTimeout: 60000,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-gpu',
-    '--disable-extensions',
-  ],
-  timeout: 30000,
-  connectOption: {
-    defaultViewport: {
-      width: 1280,
-      height: 1080,
-    },
-  },
-}
-
 const outputFileName = `${formatDate(new Date())}_simclub.gr`;
 let result = [];
 let totalPages = 1;
 
 (async function () {
-const {browser} = await connect(browserOpts)
-
   for (let i = 1; i < 10; i++) {
     let requestLink= null
     if (i===1) {
@@ -47,24 +25,13 @@ const {browser} = await connect(browserOpts)
     } else {
       requestLink=`https://www.simclub.gr/en/shop-2/page/${i}/?filter_brand=simagic`
     }
-    let page=null
     try {
       if (i > totalPages) {
         break;
       }
       console.log('PAGE', chalk.green(i));
-      page = await browser.newPage();
-      await page.goto(requestLink, { waitUntil: 'networkidle2', timeout: browserOpts.timeout })
-      await delay (1500)
-      const title = await page.title();
-      if (title?.includes('Just a moment') || title?.includes('Трохи зачекайте')) {
-				await delay(3500);
-				await page.keyboard.press('Tab');
-				await page.keyboard.press('Space');
-				await delay(6000);
-			}
-			const html = await page.content();
-      const { document } = new JSDOM(html).window;
+      const { data } = await axios.get(requestLink);
+      const { document } = new JSDOM(data).window;
 
       totalPages = Math.ceil(
         document
@@ -129,18 +96,7 @@ const {browser} = await connect(browserOpts)
     } catch (error) {
       console.log(chalk.red(error));
       await writeErrorToLog('simclub.gr', error);
-    } finally {
-      if (page) {
-        await page.close()
-        await delay()
-      }
     }
   }
-  await browser.close()
   await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();
-
-
-function delay(val = 500) {
-  return new Promise(resolve => setTimeout(resolve, val));
-}

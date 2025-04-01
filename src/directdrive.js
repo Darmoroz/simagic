@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { connect } from 'puppeteer-real-browser';
 import chalk from 'chalk';
 
 import { JSDOM } from 'jsdom';
@@ -30,16 +30,45 @@ const TYPE_AVAILABILITY = {
   pre: 'Pre-order',
 };
 
+const browserOpts = {
+  headless: false,
+  protocolTimeout: 60000,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-extensions',
+  ],
+  timeout: 30000,
+  connectOption: {
+    defaultViewport: {
+      width: 1280,
+      height: 1080,
+    },
+  },
+};
+
 const outputFileName = `${formatDate(new Date())}_directdrive.it`;
 let result = [];
 
 (async function () {
+  const {browser} = await connect(browserOpts)
   for (let i = 0; i < URLS_PATH.length; i++) {
     const category = URLS_PATH[i];
+    let page = null;
     try {
-      const { data } = await axios.get(
-        `https://www.directdrive.it/en/sim-racing-wheels/${category}`
-      );
+      page = await browser.newPage();
+      await page.goto(`https://www.directdrive.it/en/sim-racing-wheels/${category}`, { waitUntil: 'networkidle2', timeout: browserOpts.timeout });
+      await delay(1500);
+      const title = await page.title();
+      if (title?.includes('Just a moment') || title?.includes('Трохи зачекайте')) {
+        await delay(3500);
+        await page.keyboard.press('Tab');
+        await page.keyboard.press('Space');
+        await delay(6000);
+      }
+      const data = await page.content();
       const { document } = new JSDOM(data).window;
       const products = [...document.querySelectorAll('.shop-container .product-small.col')];
       console.log('Кількість товарів в категорії', category, chalk.yellow(products.length));
@@ -66,7 +95,17 @@ let result = [];
     } catch (error) {
       console.log(error);
       await writeErrorToLog('directdrive.it', error);
+    } finally {
+      if (page) {
+        await page.close()
+        await delay()
+      }
     }
   }
+  await browser.close()
   await saveDataCSV(convertToCSV(result.flat()), outputFileName);
 })();
+
+function delay(val = 500) {
+  return new Promise(resolve => setTimeout(resolve, val));
+}
